@@ -1,65 +1,165 @@
-const bcrypt = require('bcrypt');
 const db = require('../config/db');
 const generateToken = require('../utils/generateToken');
 
-exports.register = async (req, res) => {
-    try {
-        const { full_name, phone, password, confirm_password } = req.body;
+/* ---------- HELPERS ---------- */
+const isValidPhone = (phone) => /^\d{10,15}$/.test(phone);
+const isStrongPassword = (password) =>
+  /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/.test(password);
 
-        if (!full_name || !phone || !password || !confirm_password) {
-            return res.status(400).json({ error: 'All fields are required' });
-        }
+/* ====================== REGISTER ====================== */
+exports.register = (req, res) => {
+  try {
+    const { full_name, phone, password, confirm_password, pin } = req.body;
 
-        if (password !== confirm_password) {
-            return res.status(400).json({ error: 'Passwords do not match' });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const idDocPath = req.file ? req.file.path : null;
-
-        db.query(
-            'INSERT INTO users (full_name, phone, password, id_document) VALUES (?, ?, ?, ?)',
-            [full_name, phone, hashedPassword, idDocPath],
-            (err) => {
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json({ message: 'User registered successfully' });
-            }
-        );
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Server error' });
+    /* ---- REQUIRED FIELDS ---- */
+    if (!full_name || !phone || !password || !confirm_password || !pin) {
+      return res.status(400).json({ error: "All fields are required" });
     }
+
+    /* ---- FULL NAME ---- */
+    if (full_name.trim().length < 3) {
+      return res.status(400).json({
+        error: "Full name must be at least 3 characters",
+      });
+    }
+
+    /* ---- PHONE ---- */
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({
+        error: "Phone number must be 10–15 digits",
+      });
+    }
+
+    /* ---- PASSWORD ---- */
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({
+        error:
+          "Password must be at least 8 characters and include letters & numbers",
+      });
+    }
+
+    /* ---- CONFIRM PASSWORD ---- */
+    if (password !== confirm_password) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    /* ---- PIN ---- */
+    if (!/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ error: "PIN must be exactly 4 digits" });
+    }
+
+    const idDocPath = req.file ? req.file.path : null;
+
+    /* ---- CHECK PHONE EXISTS ---- */
+    db.query(
+      "SELECT id FROM users WHERE phone = ?",
+      [phone],
+      (err, existing) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        if (existing.length > 0) {
+          return res.status(400).json({ error: "Phone already registered" });
+        }
+
+        /* ---- INSERT USER ---- */
+        db.query(
+          `INSERT INTO users (full_name, phone, password, pin, id_document)
+           VALUES (?, ?, ?, ?, ?)`,
+          [full_name.trim(), phone, password, pin, idDocPath],
+          (err) => {
+            if (err) {
+              console.error(err);
+              return res.status(500).json({ error: "Database error" });
+            }
+
+            res.json({ message: "User registered successfully" });
+          }
+        );
+      }
+    );
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
 };
 
+/* ====================== LOGIN ====================== */
 exports.login = (req, res) => {
-    const { phone, password } = req.body;
+  try {
+    let { phone, password } = req.body;
 
+    /* ---- REQUIRED ---- */
     if (!phone || !password) {
-        return res.status(400).json({ error: 'All fields are required' });
+      return res.status(400).json({
+        error: "Phone and password are required",
+      });
     }
 
-    db.query('SELECT * FROM users WHERE phone = ?', [phone], async (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (result.length === 0) return res.status(400).json({ error: 'User not found' });
+    phone = phone.toString().trim();
+    password = password.toString().trim();
 
-        const user = result[0];
-        const isMatch = await bcrypt.compare(password, user.password);
+    /* ---- PHONE FORMAT ---- */
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({
+        error: "Invalid phone number format",
+      });
+    }
 
-        if (!isMatch) return res.status(400).json({ error: 'Invalid password' });
+    /* ---- PASSWORD LENGTH ---- */
+    if (password.length < 8) {
+      return res.status(400).json({
+        error: "Invalid credentials",
+      });
+    }
 
-        const token = generateToken(user);
+    const sql = `
+      SELECT id, full_name, phone, password, role, is_blocked
+      FROM users
+      WHERE phone = ?
+      LIMIT 1
+    `;
 
-        res.json({
-            token,
-            user: {
-                id: user.id,
-                full_name: user.full_name,
-                phone: user.phone,
-                role: user.role
-            }
-        });
+    db.query(sql, [phone], (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Database error" });
+      }
+
+      if (!result.length) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const user = result[0];
+
+      /* ---- PASSWORD CHECK (PLAIN) ---- */
+      if (user.password.trim() !== password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      /* ---- BLOCK CHECK ---- */
+      if (user.is_blocked) {
+        return res.status(403).json({ error: "Your account is blocked" });
+      }
+
+      const token = generateToken({
+        id: user.id,
+        role: user.role,
+         full_name: user.full_name, 
+      });
+
+      return res.json({
+        message: "Login successful",
+        token,
+        user: {
+          id: user.id,
+          full_name: user.full_name,
+          phone: user.phone,
+          role: user.role,
+        },
+      });
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
 };

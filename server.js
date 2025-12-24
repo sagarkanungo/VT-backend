@@ -1,21 +1,41 @@
 const express = require('express');
 const cors = require('cors');
+const path = require("path");
 require('dotenv').config();
 
-const authRoutes = require('./routes/auth.routes');
 require('./config/db');
+
+const authRoutes = require('./routes/auth.routes');
+const entriesRoutes = require("./routes/entries.routes");
+const usersRoutes = require("./routes/users.routes");
 
 const app = express();
 
-app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true
-}));
-
+// Middleware
+app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
 
+// Static uploads
+app.use('/uploads', express.static(path.join(__dirname, "uploads")));
+
+// API routes
 app.use('/api', authRoutes);
+app.use("/api", require("./routes/money.routes"));
+app.use("/api", entriesRoutes);
+app.use("/api", require("./routes/transfer.routes"));
+app.use("/api", usersRoutes);
+
+// Serve React dist (AFTER APIs)
+app.use(express.static(path.join(__dirname, "dist")));
+
+// React router fallback
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
+
+
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
