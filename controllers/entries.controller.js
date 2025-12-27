@@ -3,7 +3,7 @@ const db = require("../config/db");
 // Get all entries for a user
 exports.getEntries = (req, res) => {
   const userId = req.params.userId;
-
+  
   db.query(
     "SELECT * FROM entries WHERE user_id = ? ORDER BY created_at DESC",
     [userId],
@@ -20,15 +20,25 @@ exports.getEntries = (req, res) => {
 // Create a new entry
 exports.createEntry = (req, res) => {
   const userId = req.params.userId;
-  const { day, vehicle, amount, amount2 } = req.body;
+  const { entry_number, vehicle, amount, amount2 } = req.body;
 
-  if (!day || !vehicle || amount === undefined) {
+  // Validate entry_number
+  if (entry_number === undefined || entry_number === null || entry_number === "") {
+    return res.status(400).json({ error: "Entry number is required" });
+  }
+
+  const entryNum = parseInt(entry_number);
+  if (isNaN(entryNum) || entryNum < 0 || entryNum > 9999) {
+    return res.status(400).json({ error: "Entry number must be between 0 and 9999" });
+  }
+
+  if (!vehicle || amount === undefined) {
     return res.status(400).json({ error: "Required fields missing" });
   }
 
   db.query(
-    "INSERT INTO entries (user_id, `day`, vehicle, amount, amount2) VALUES (?,?,?,?,?)",
-    [userId, day, vehicle, amount, amount2 ?? 0],
+    "INSERT INTO entries (user_id, entry_number, vehicle, amount, amount2) VALUES (?,?,?,?,?)",
+    [userId, entryNum, vehicle, amount, amount2 ?? 0],
     (err, result) => {
       if (err) {
         console.error("DB Error (createEntry):", err);
@@ -39,49 +49,53 @@ exports.createEntry = (req, res) => {
   );
 };
 
-
 // Update an existing entry
 exports.updateEntry = (req, res) => {
   const entryId = req.params.id;
-  const { day, vehicle, amount, amount2 } = req.body;
+  const { entry_number, vehicle, amount, amount2 } = req.body;
 
-  if (!day || !vehicle || amount === undefined) {
+  // Validate entry_number
+  if (entry_number === undefined || entry_number === null || entry_number === "") {
+    return res.status(400).json({ error: "Entry number is required" });
+  }
+
+  const entryNum = parseInt(entry_number);
+  if (isNaN(entryNum) || entryNum < 0 || entryNum > 9999) {
+    return res.status(400).json({ error: "Entry number must be between 0 and 9999" });
+  }
+
+  if (!vehicle || amount === undefined) {
     return res.status(400).json({ error: "Required fields missing" });
   }
 
   db.query(
-    "UPDATE entries SET `day`=?, vehicle=?, amount=?, amount2=? WHERE id=?",
-    [day, vehicle, amount, amount2 ?? 0, entryId],
+    "UPDATE entries SET entry_number=?, vehicle=?, amount=?, amount2=? WHERE id=?",
+    [entryNum, vehicle, amount, amount2 ?? 0, entryId],
     (err, result) => {
       if (err) {
         console.error("DB Error (updateEntry):", err);
         return res.status(500).json({ error: "DB Error" });
       }
-
       if (result.affectedRows === 0) {
         return res.status(404).json({ error: "Entry not found" });
       }
-
       res.json({ message: "Entry updated" });
     }
   );
 };
 
-
 // Delete an entry
 exports.deleteEntry = (req, res) => {
   const entryId = req.params.id;
-
+  
   db.query("DELETE FROM entries WHERE id=?", [entryId], (err, result) => {
     if (err) {
       console.error("DB Error (deleteEntry):", err);
       return res.status(500).json({ error: "DB Error" });
     }
-
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Entry not found" });
     }
-
     res.json({ message: "Entry deleted" });
   });
 };

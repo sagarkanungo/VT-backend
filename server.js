@@ -24,7 +24,7 @@ app.use("/api", require("./routes/money.routes"));
 app.use("/api", entriesRoutes);
 app.use("/api", require("./routes/transfer.routes"));
 app.use("/api", usersRoutes);
-
+app.use("/api", require("./routes/admin.routes")); // Add this line
 // Serve React dist (AFTER APIs)
 app.use(express.static(path.join(__dirname, "dist")));
 
