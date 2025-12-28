@@ -12,7 +12,7 @@ exports.getAllUsers = (req, res) => {
 exports.getUserById = (req, res) => {
   const userId = req.params.id;
   db.query(
-    "SELECT id, full_name, phone, role, total_balance, created_at FROM users WHERE id=?",
+    "SELECT id, full_name, phone, role, total_balance, created_at,id_document  FROM users WHERE id=?",
     [userId],
     (err, result) => {
       if (err) return res.status(500).json({ error: "DB Error" });
