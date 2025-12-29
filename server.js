@@ -24,19 +24,21 @@ app.use("/api", require("./routes/money.routes"));
 app.use("/api", entriesRoutes);
 app.use("/api", require("./routes/transfer.routes"));
 app.use("/api", usersRoutes);
-app.use("/api", require("./routes/admin.routes")); // Add this line
+app.use("/api", require("./routes/admin.routes"));
+const notificationRoutes = require('./routes/notifications.routes');
+app.use('/api', notificationRoutes);
 
-const notificationRoutes = require('./routes/notifications');
+// const notificationRoutes = require('./routes/notifications');
 
 // Add this line with your other route registrations
-app.use('/api/notifications', notificationRoutes);
+// app.use('/api/notifications', notificationRoutes);
 // Serve React dist (AFTER APIs)
-app.use(express.static(path.join(__dirname, "dist")));
+// app.use(express.static(path.join(__dirname, "dist")));
 
-// React router fallback
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
-});
+// // React router fallback
+// app.use((req, res) => {
+//   res.sendFile(path.join(__dirname, "dist", "index.html"));
+// });
 
 
 

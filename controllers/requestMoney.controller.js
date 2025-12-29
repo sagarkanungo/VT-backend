@@ -122,3 +122,14 @@ exports.sendMoneyForRequest = (req, res) => {
   );
 };
 
+// 3️⃣ Get pending money requests count
+exports.getPendingRequestsCount = (req, res) => {
+  db.query(
+    "SELECT COUNT(*) as pendingCount FROM chat_requests WHERE status = 'pending'",
+    (err, result) => {
+      if (err) return res.status(500).json({ error: "DB Error" });
+      res.json({ pendingCount: result[0].pendingCount });
+    }
+  );
+};
+

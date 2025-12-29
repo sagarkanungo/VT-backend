@@ -20,7 +20,7 @@ exports.getEntries = (req, res) => {
 // Create a new entry
 exports.createEntry = (req, res) => {
   const userId = req.params.userId;
-  const { entry_number, vehicle, amount, amount2 } = req.body;
+  const { entry_number, amount, amount2 } = req.body;
 
   // Validate entry_number
   if (entry_number === undefined || entry_number === null || entry_number === "") {
@@ -32,13 +32,11 @@ exports.createEntry = (req, res) => {
     return res.status(400).json({ error: "Entry number must be between 0 and 9999" });
   }
 
-  if (!vehicle || amount === undefined) {
-    return res.status(400).json({ error: "Required fields missing" });
-  }
+
 
   db.query(
-    "INSERT INTO entries (user_id, entry_number, vehicle, amount, amount2) VALUES (?,?,?,?,?)",
-    [userId, entryNum, vehicle, amount, amount2 ?? 0],
+    "INSERT INTO entries (user_id, entry_number, amount, amount2) VALUES (?,?,?,?)",
+    [userId, entryNum, amount, amount2 ?? 0],
     (err, result) => {
       if (err) {
         console.error("DB Error (createEntry):", err);
@@ -52,7 +50,7 @@ exports.createEntry = (req, res) => {
 // Update an existing entry
 exports.updateEntry = (req, res) => {
   const entryId = req.params.id;
-  const { entry_number, vehicle, amount, amount2 } = req.body;
+  const { entry_number, amount, amount2 } = req.body;
 
   // Validate entry_number
   if (entry_number === undefined || entry_number === null || entry_number === "") {
@@ -64,13 +62,11 @@ exports.updateEntry = (req, res) => {
     return res.status(400).json({ error: "Entry number must be between 0 and 9999" });
   }
 
-  if (!vehicle || amount === undefined) {
-    return res.status(400).json({ error: "Required fields missing" });
-  }
+ 
 
   db.query(
-    "UPDATE entries SET entry_number=?, vehicle=?, amount=?, amount2=? WHERE id=?",
-    [entryNum, vehicle, amount, amount2 ?? 0, entryId],
+    "UPDATE entries SET entry_number=?, amount=?, amount2=? WHERE id=?",
+    [entryNum, amount, amount2 ?? 0, entryId],
     (err, result) => {
       if (err) {
         console.error("DB Error (updateEntry):", err);
