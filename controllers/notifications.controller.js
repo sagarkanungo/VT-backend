@@ -45,7 +45,7 @@ exports.createNotification = (userId, type, message, data = {}) => {
   });
 };
 
-// Admin: Send announcement to all users
+// Admin: Send announcement to all users sagar
 exports.sendAnnouncement = (req, res) => {
   const { message, title } = req.body;
 
