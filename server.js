@@ -27,6 +27,7 @@ app.use("/api", usersRoutes);
 app.use("/api", require("./routes/admin.routes"));
 const notificationRoutes = require('./routes/notifications.routes');
 app.use('/api', notificationRoutes);
+app.use("/api", require("./routes/analytics.routes"));
 
 // const notificationRoutes = require('./routes/notifications');
 
