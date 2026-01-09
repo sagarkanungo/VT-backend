@@ -10,13 +10,27 @@ const entriesRoutes = require("./routes/entries.routes");
 const usersRoutes = require("./routes/users.routes");
 
 const app = express();
-
+app.set("trust proxy", 1);
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "https://app.breetta.com",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}));
+
 app.use(express.json());
 
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, "uploads")));
+
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "Server is running",
+    time: new Date().toISOString()
+  });
+});
 
 // API routes
 app.use('/api', authRoutes);
