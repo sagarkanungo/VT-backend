@@ -1,9 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require("path");
-require('dotenv').config();
-
-require('./config/db');
+require('dotenv').config(); // Load .env
+const db = require('./config/db'); // Ensure db.js loads
 
 const authRoutes = require('./routes/auth.routes');
 const entriesRoutes = require("./routes/entries.routes");
@@ -11,19 +10,55 @@ const usersRoutes = require("./routes/users.routes");
 
 const app = express();
 app.set("trust proxy", 1);
+
 // Middleware
 app.use(cors({
   origin: "https://app.breetta.com",
-  // credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
-
 app.use(express.json());
-
-// Static uploads
 app.use('/uploads', express.static(path.join(__dirname, "uploads")));
 
+// ========================
+// 🔹 Debug / Env Check Routes
+// ========================
 
+// Check environment variables
+app.get('/api/env-check', (req, res) => {
+  res.json({
+    DB_HOST: process.env.DB_HOST || 'MISSING',
+    DB_USER: process.env.DB_USER || 'MISSING',
+    DB_PASSWORD: process.env.DB_PASSWORD ? '*****' : 'MISSING',
+    DB_NAME: process.env.DB_NAME || 'MISSING',
+    NODE_ENV: process.env.NODE_ENV || 'MISSING'
+  });
+});
+
+// Test DB connection
+app.get('/api/db-test', (req, res) => {
+  const mysql = require('mysql2');
+  const testDb = mysql.createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
+  });
+
+  testDb.connect(err => {
+    if (err) {
+      return res.json({ success: false, error: err.message });
+    }
+    testDb.query('SELECT 1 + 1 AS result', (err, rows) => {
+      if (err) return res.json({ success: false, error: err.message });
+      res.json({ success: true, result: rows });
+      testDb.end();
+    });
+  });
+});
+
+// ========================
+// ✅ Health check route
+// ========================
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
@@ -32,7 +67,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// API routes
+// ========================
+// API Routes
+// ========================
 app.use('/api', authRoutes);
 app.use("/api", require("./routes/money.routes"));
 app.use("/api", entriesRoutes);
@@ -43,24 +80,14 @@ const notificationRoutes = require('./routes/notifications.routes');
 app.use('/api', notificationRoutes);
 app.use("/api", require("./routes/analytics.routes"));
 
-// const notificationRoutes = require('./routes/notifications');
-
-// Add this line with your other route registrations
-// app.use('/api/notifications', notificationRoutes);
-// Serve React dist (AFTER APIs)
-// app.use(express.static(path.join(__dirname, "dist")));
-
-// // React router fallback
-// app.use((req, res) => {
-//   res.sendFile(path.join(__dirname, "dist", "index.html"));
-// });
-
-
-
+// ========================
+// Start Server
+// ========================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
 
 
 // const express = require('express');
