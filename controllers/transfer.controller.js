@@ -72,12 +72,12 @@ exports.transferMoney = (req, res) => {
             const cleanNote = note ? note.trim() : "";
 
             const senderDesc = cleanNote
-              ? `Sent ₹${transferAmount} to ${phone}. ${cleanNote}`
-              : `Sent ₹${transferAmount} to ${phone}.`;
+              ? `Sent ${transferAmount} to ${phone}. ${cleanNote}`
+              : `Sent ${transferAmount} to ${phone}.`;
 
             const receiverDesc = cleanNote
-              ? `Received ₹${transferAmount} from ${sender.full_name}. ${cleanNote}`
-              : `Received ₹${transferAmount} from ${sender.full_name}.`;
+              ? `Received ${transferAmount} from ${sender.full_name}. ${cleanNote}`
+              : `Received ${transferAmount} from ${sender.full_name}.`;
 
             // 3️⃣ Deduct sender balance
             db.query(
