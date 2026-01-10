@@ -13,7 +13,7 @@ app.set("trust proxy", 1);
 
 // Middleware
 app.use(cors({
-  origin: "https://app.breetta.com",
+  origin: "https://breetta.com",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
 app.use(express.json());
