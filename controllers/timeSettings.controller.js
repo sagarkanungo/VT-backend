@@ -13,6 +13,7 @@ exports.getTimeSettings = (req, res) => {
       if (!rows.length) {
         return res.json({
           enabled: false,
+          forceDisable: false,
           startTime: "00:00",
           endTime: "23:59",
           timezone: "Asia/Kolkata",
@@ -23,6 +24,7 @@ exports.getTimeSettings = (req, res) => {
 
       res.json({
         enabled: !!setting.enabled,
+        forceDisable: !!setting.force_disable,
         startTime: setting.start_time.substring(0, 5),
         endTime: setting.end_time.substring(0, 5),
         timezone: setting.timezone,
@@ -32,28 +34,17 @@ exports.getTimeSettings = (req, res) => {
 };
 
 /* ================= UPDATE TIME SETTINGS ================= */
+/* ================= UPDATE TIME SETTINGS ================= */
 exports.updateTimeSettings = (req, res) => {
-     console.log("REQ BODY:", req.body);
-  const { enabled, startTime, endTime, timezone } = req.body;
-   console.log({
-      enabled,
-      startTime,
-      endTime,
-      timezone
-    });
+  console.log("REQ BODY:", req.body);
+  const { enabled, forceDisable, startTime, endTime, timezone } = req.body;
 
-  if (typeof enabled !== "boolean") {
-    return res.status(400).json({ error: "Invalid enabled value" });
+  if (typeof enabled !== "boolean" || typeof forceDisable !== "boolean") {
+    return res.status(400).json({ error: "Invalid enabled or forceDisable value" });
   }
 
-  if (!startTime || !endTime) {
-    return res.status(400).json({
-      error: "Start time and end time are required",
-    });
-  }
-
-  const startTimeFormatted = `${startTime}:00`;
-  const endTimeFormatted = `${endTime}:00`;
+  const startTimeFormatted = startTime ? `${startTime}:00` : "00:00";
+  const endTimeFormatted = endTime ? `${endTime}:00` : "23:59";
 
   // Keep only one row
   db.query("DELETE FROM time_settings", (err) => {
@@ -63,10 +54,11 @@ exports.updateTimeSettings = (req, res) => {
     }
 
     db.query(
-      `INSERT INTO time_settings (enabled, start_time, end_time, timezone)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO time_settings (enabled, force_disable, start_time, end_time, timezone)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         enabled,
+        forceDisable, // <--- save force_disable
         startTimeFormatted,
         endTimeFormatted,
         timezone || "Asia/Kolkata",
@@ -74,9 +66,7 @@ exports.updateTimeSettings = (req, res) => {
       (err) => {
         if (err) {
           console.error(err);
-          return res.status(500).json({
-            error: "Failed to update time settings",
-          });
+          return res.status(500).json({ error: "Failed to update time settings" });
         }
 
         res.json({
@@ -87,3 +77,4 @@ exports.updateTimeSettings = (req, res) => {
     );
   });
 };
+
