@@ -69,4 +69,17 @@ exports.getEntryNumberDetails = (req, res) => {
 };
 
 
+// controllers/analytics.controller.js
+exports.resetAllActiveEntries = (req, res) => {
+  const sql = `UPDATE entries SET total_amount = 0 WHERE total_amount > 0`;
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error("DB Error (reset all active):", err);
+      return res.status(500).json({ error: "DB Error" });
+    }
+
+    res.json({ success: true, message: "All active entries have been reset" });
+  });
+};
 
