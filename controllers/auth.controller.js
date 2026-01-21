@@ -2,7 +2,7 @@ const db = require('../config/db');
 const generateToken = require('../utils/generateToken');
 
 /* ---------- HELPERS ---------- */
-const isValidPhone = (phone) => /^\d{10,15}$/.test(phone);
+const isValidPhone = (phone) => /^\+\d{10,15}$/.test(phone);
 const isStrongPassword = (password) =>
   /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/.test(password);
 
@@ -83,60 +83,78 @@ exports.register = (req, res) => {
   }
 };
 
+// ---------- HELPERS ----------
+const normalizePhone = (phone) => {
+  if (!phone) return null;
+
+  // Remove spaces, dashes, parentheses
+  phone = phone.toString().replace(/\D+/g, "");
+
+  // If phone starts with country code (e.g., 911234567890) → add +
+  if (phone.length > 10 && !phone.startsWith("+")) {
+    return "+" + phone;
+  }
+
+  // If phone is 10 digits (local format) → return as-is (no assumption)
+  // ⚠️ Cannot guess country here globally
+  if (phone.length === 10) {
+    return phone; // We will query DB for any phone ending with these 10 digits
+  }
+
+  // Already starts with +
+  return phone.startsWith("+") ? phone : "+" + phone;
+};
+
+
 /* ====================== LOGIN ====================== */
 exports.login = (req, res) => {
   try {
     let { phone, password } = req.body;
 
-    /* ---- REQUIRED ---- */
     if (!phone || !password) {
-      return res.status(400).json({
-        error: "Phone and password are required",
-      });
+      return res.status(400).json({ error: "Phone and password are required" });
     }
 
-    phone = phone.toString().trim();
     password = password.toString().trim();
 
-    /* ---- PHONE FORMAT ---- */
-    if (!isValidPhone(phone)) {
-      return res.status(400).json({
-        error: "Invalid phone number format",
-      });
+    // Normalize input phone
+    const normalizedPhone = normalizePhone(phone);
+
+    let sql, params;
+
+    if (normalizedPhone.startsWith("+")) {
+      // User typed full number with country code → exact match
+      sql = `
+        SELECT id, full_name, phone, password, role, is_blocked
+        FROM users
+        WHERE phone = ?
+        LIMIT 1
+      `;
+      params = [normalizedPhone];
+    } else {
+      // User typed 10-digit number → match last 10 digits in DB
+      // Works for all countries globally
+      sql = `
+        SELECT id, full_name, phone, password, role, is_blocked
+        FROM users
+        WHERE RIGHT(phone, 10) = ?
+        LIMIT 1
+      `;
+      params = [normalizedPhone]; // last 10 digits only
     }
 
-    /* ---- PASSWORD LENGTH ---- */
-    if (password.length < 8) {
-      return res.status(401).json({
-        error: "Invalid credentials",
-      });
-    }
+    db.query(sql, params, (err, result) => {
+      if (err) return res.status(500).json({ error: "Database error" });
 
-    const sql = `
-      SELECT id, full_name, phone, password, role, is_blocked
-      FROM users
-      WHERE phone = ?
-      LIMIT 1
-    `;
-
-    db.query(sql, [phone], (err, result) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: "Database error" });
-      }
-
-      if (!result.length) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
+      if (!result.length) return res.status(401).json({ error: "Invalid credentials" });
 
       const user = result[0];
 
-      /* ---- PASSWORD CHECK (PLAIN) ---- */
+      // Check password (plain, but should be hashed in prod)
       if (user.password.trim() !== password) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      /* ---- BLOCK CHECK ---- */
       if (user.is_blocked) {
         return res.status(403).json({ error: "Your account is blocked" });
       }
@@ -144,7 +162,7 @@ exports.login = (req, res) => {
       const token = generateToken({
         id: user.id,
         role: user.role,
-        full_name: user.full_name, 
+        full_name: user.full_name,
       });
 
       return res.json({
@@ -163,6 +181,7 @@ exports.login = (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 
 

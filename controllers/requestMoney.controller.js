@@ -69,6 +69,35 @@ exports.getMoneyRequests = (req, res) => {
     }
   );
 };
+// exports.getMoneyRequests = (req, res) => {
+//   db.query(
+//     `
+//     SELECT
+//       u.id AS user_id,
+//       u.full_name,
+//       u.phone,
+//       COUNT(cm.id) AS unread_count
+//     FROM users u
+//     LEFT JOIN chat_requests cr 
+//       ON cr.user_id = u.id
+//     LEFT JOIN chat_messages cm
+//       ON cm.request_id = cr.id
+//       AND cm.sender = 'user'
+//       AND cm.is_read = 0
+//     GROUP BY u.id, u.full_name, u.phone
+//     ORDER BY unread_count DESC
+//     `,
+//     (err, results) => {
+//       if (err) {
+//         console.error(err);
+//         return res.status(500).json({ error: "DB Error" });
+//       }
+//       res.json(results);
+//     }
+//   );
+// };
+
+
 
 // 2️⃣ Approve / Send money for a request OR Direct payment
 exports.sendMoneyForRequest = (req, res) => {
@@ -227,4 +256,60 @@ exports.getPendingRequestsCount = (req, res) => {
     }
   );
 };
+
+// Get chat messages for a specific money request
+exports.getChatMessages = (req, res) => {
+  const requestId = req.params.requestId;
+
+  db.query(
+    "SELECT * FROM chat_messages WHERE request_id = ? ORDER BY created_at ASC",
+    [requestId],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: "DB Error" });
+      res.json(results);
+    }
+  );
+};
+
+
+
+// Send a message (from admin or user)
+exports.sendChatMessage = (req, res) => {
+  const { request_id, sender, message } = req.body;
+
+  if (!request_id || !sender || !message) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+  const isRead =  0;
+
+  db.query(
+    "INSERT INTO chat_messages (request_id, sender, message, is_read) VALUES (?, ?, ?, ?)",
+    [request_id, sender, message,isRead],
+    (err) => {
+      if (err) return res.status(500).json({ error: "DB Error" });
+      res.json({ success: true, message: "Message sent" });
+    }
+  );
+};
+// Mark messages as read
+exports.markChatAsRead = (req, res) => {
+  const { request_id, role } = req.body;
+
+  const senderToMark = role === "admin" ? "user" : "admin";
+
+  db.query(
+    `UPDATE chat_messages 
+     SET is_read = 1 
+     WHERE request_id = ? AND sender = ?`,
+    [request_id, senderToMark],
+    (err) => {
+      if (err) return res.status(500).json({ error: "DB Error" });
+      res.json({ success: true });
+    }
+  );
+};
+
+
+
+
 
