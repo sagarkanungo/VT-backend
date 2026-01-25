@@ -18,28 +18,28 @@ app.set("trust proxy", 1);
 // }));
 
 // 🔹 TEMP CORS for localhost testing (comment later)
-const allowedOrigins = [
-  "https://breetta.com",
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "http://127.0.0.1:3000",
-  "http://127.0.0.1:5173"
-];
+const allowedOrigins = ["https://breetta.com", "https://www.breetta.com"];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (Postman, mobile apps)
-    if (!origin) return callback(null, true);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin); // Echo origin
+    res.header("Access-Control-Allow-Credentials", "true"); // Cookies / auth
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+  }
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+  // Handle preflight request
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
 
-    return callback(new Error("Not allowed by CORS"), false);
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  credentials: true
-}));
+  next();
+});
+
 
 app.use(express.json());
 app.use(
