@@ -13,9 +13,14 @@ app.set("trust proxy", 1);
 
 // Middleware
 app.use(cors({
-  origin: "https://breetta.com",
+  origin: true, // allow ALL origins
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "*"],
+  credentials: true
 }));
+
+app.options("*", cors());
+
 
 // 🔹 TEMP CORS for localhost testing (comment later)
 // const allowedOrigins = [
