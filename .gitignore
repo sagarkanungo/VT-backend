@@ -5,11 +5,3 @@ build/
 logs/
 *.log
 .DS_Store
-
-Local uploads folder
-F:/virtual-Transactions/backend/uploads
-
-# Server side folders (hostinger)
-upload/
-uploads/
-public_html/upload/

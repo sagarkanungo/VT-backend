@@ -12,40 +12,38 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Middleware
-// app.use(cors({
-//   origin: "https://breetta.com",
-//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-// }));
+app.use(cors({
+  origin: "https://breetta.com",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}));
 
 // 🔹 TEMP CORS for localhost testing (comment later)
-const allowedOrigins = ["https://breetta.com", "https://www.breetta.com"];
+// const allowedOrigins = [
+//   "https://breetta.com",
+//   "http://localhost:3000",
+//   "http://localhost:5173",
+//   "http://127.0.0.1:3000",
+//   "http://127.0.0.1:5173"
+// ];
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin); // Echo origin
-    res.header("Access-Control-Allow-Credentials", "true"); // Cookies / auth
-    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    );
-  }
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     // allow requests with no origin (Postman, mobile apps)
+//     if (!origin) return callback(null, true);
 
-  // Handle preflight request
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+//     if (allowedOrigins.includes(origin)) {
+//       return callback(null, true);
+//     }
 
-  next();
-});
-
+//     return callback(new Error("Not allowed by CORS"), false);
+//   },
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   credentials: true
+// }));
 
 app.use(express.json());
-app.use(
-  "/uploads",
-  express.static("/home/domains/api.breetta.com/uploads")
-);
+app.use('/uploads', express.static(path.join(__dirname, "uploads")));
+
 // ========================
 // 🔹 Debug / Env Check Routes
 // ========================
