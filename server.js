@@ -42,7 +42,11 @@ app.use(cors({
 // }));
 
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, "uploads")));
+// app.use('/uploads', express.static(path.join(__dirname, "uploads")));
+app.use(
+  "/uploads",
+  express.static("/home/domains/api.breetta.com/uploads")
+);
 
 // ========================
 // 🔹 Debug / Env Check Routes
