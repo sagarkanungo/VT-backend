@@ -12,53 +12,40 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Middleware
+// app.use(cors({
+//   origin: "https://breetta.com",
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+// }));
+
+// 🔹 TEMP CORS for localhost testing (comment later)
 const allowedOrigins = [
   "https://breetta.com",
-  // "http://localhost:3000",  
-  // "http://localhost:5173"   
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173"
 ];
 
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true); // Postman / mobile / server
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error("Not allowed by CORS"));
+  origin: function (origin, callback) {
+    // allow requests with no origin (Postman, mobile apps)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"), false);
   },
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true
 }));
 
-// Preflight for all routes
-app.options("*", cors());
-
-
-// 🔹 TEMP CORS for localhost testing (comment later)
-// const allowedOrigins = [
-//   "https://breetta.com",
-//   "http://localhost:3000",
-//   "http://localhost:5173",
-//   "http://127.0.0.1:3000",
-//   "http://127.0.0.1:5173"
-// ];
-
-// app.use(cors({
-//   origin: function (origin, callback) {
-//     // allow requests with no origin (Postman, mobile apps)
-//     if (!origin) return callback(null, true);
-
-//     if (allowedOrigins.includes(origin)) {
-//       return callback(null, true);
-//     }
-
-//     return callback(new Error("Not allowed by CORS"), false);
-//   },
-//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-//   credentials: true
-// }));
-
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, "uploads")));
-
+app.use(
+  "/uploads",
+  express.static("/home/domains/api.breetta.com/uploads")
+);
 // ========================
 // 🔹 Debug / Env Check Routes
 // ========================
