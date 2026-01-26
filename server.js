@@ -128,7 +128,7 @@ if (db) {
 // ----------------------------
 // Start server
 // ----------------------------
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000; 
 if (!PORT) {
   log('❌ No PORT defined in environment! Cannot start server.');
   process.exit(1);
