@@ -111,20 +111,13 @@ app.use("/api", require("./routes/analytics.routes"));
 // ========================
 // Start Server
 // ========================
-setInterval(() => {
-  db.query("SELECT 1", err => {
-    if (err) {
-      console.error("⚠️ MySQL keep-alive failed:", err.message);
-    } else {
-      console.log("🫀 MySQL keep-alive OK");
-    }
-  });
-}, 5 * 60 * 1000);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("🚀 Server running on port", PORT);
 });
+
 
 
 
