@@ -1,55 +1,57 @@
 const express = require('express');
 const cors = require('cors');
 const path = require("path");
-const fs = require('fs'); // For manual log file
 require('dotenv').config(); // Load .env
+const db = require('./config/db'); // Ensure db.js loads
 
-// ----------------------------
-// Logging helper
-// ----------------------------
-const logFolder = path.join(__dirname, 'logs');
-if (!fs.existsSync(logFolder)) fs.mkdirSync(logFolder);
+const authRoutes = require('./routes/auth.routes');
+const entriesRoutes = require("./routes/entries.routes");
+const usersRoutes = require("./routes/users.routes");
 
-function log(message) {
-  const timestamp = new Date().toISOString();
-  console.log(`${timestamp} | ${message}`);
-  try {
-    fs.appendFileSync(path.join(logFolder, 'server.log'), `${timestamp} | ${message}\n`);
-  } catch (err) {
-    console.error('❌ Log write failed:', err.message);
-  }
-}
-
-// ----------------------------
-// DB connection
-// ----------------------------
-let db;
-try {
-  db = require('./config/db');
-  log('✅ DB loaded successfully');
-} catch (err) {
-  log(`❌ DB load failed: ${err.message}`);
-}
-
-// ----------------------------
-// Express app setup
-// ----------------------------
 const app = express();
 app.set("trust proxy", 1);
 
+// Middleware
 app.use(cors({
-  origin: true,
+  origin: "https://breetta.com",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "*"],
-  credentials: true
 }));
+
+
+
+
+// 🔹 TEMP CORS for localhost testing (comment later)
+// const allowedOrigins = [
+//   "https://breetta.com",
+//   "http://localhost:3000",
+//   "http://localhost:5173",
+//   "http://127.0.0.1:3000",
+//   "http://127.0.0.1:5173"
+// ];
+
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     // allow requests with no origin (Postman, mobile apps)
+//     if (!origin) return callback(null, true);
+
+//     if (allowedOrigins.includes(origin)) {
+//       return callback(null, true);
+//     }
+
+//     return callback(new Error("Not allowed by CORS"), false);
+//   },
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   credentials: true
+// }));
 
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, "uploads")));
 
-// ----------------------------
-// Debug / Env Check Routes
-// ----------------------------
+// ========================
+// 🔹 Debug / Env Check Routes
+// ========================
+
+// Check environment variables
 app.get('/api/env-check', (req, res) => {
   res.json({
     DB_HOST: process.env.DB_HOST || 'MISSING',
@@ -72,72 +74,57 @@ app.get('/api/db-test', (req, res) => {
 
   testDb.connect(err => {
     if (err) {
-      log(`❌ MySQL connection failed: ${err.message}`);
       return res.json({ success: false, error: err.message });
     }
     testDb.query('SELECT 1 + 1 AS result', (err, rows) => {
-      if (err) {
-        log(`❌ MySQL query failed: ${err.message}`);
-        return res.json({ success: false, error: err.message });
-      }
-      log(`✅ MySQL test query OK: ${JSON.stringify(rows)}`);
+      if (err) return res.json({ success: false, error: err.message });
       res.json({ success: true, result: rows });
       testDb.end();
     });
   });
 });
 
-// Health check
+// ========================
+// ✅ Health check route
+// ========================
 app.get("/api/health", (req, res) => {
-  log(`Health check called`);
   res.json({
     status: "ok",
     message: "Server is running",
-    port: process.env.PORT || 'MISSING',
     time: new Date().toISOString()
   });
 });
 
-// ----------------------------
+// ========================
 // API Routes
-// ----------------------------
-app.use('/api', require('./routes/auth.routes'));
+// ========================
+app.use('/api', authRoutes);
 app.use("/api", require("./routes/money.routes"));
-app.use("/api", require("./routes/entries.routes"));
+app.use("/api", entriesRoutes);
 app.use("/api", require("./routes/transfer.routes"));
-app.use("/api", require("./routes/users.routes"));
+app.use("/api", usersRoutes);
 app.use("/api", require("./routes/admin.routes"));
-app.use('/api', require('./routes/notifications.routes'));
+const notificationRoutes = require('./routes/notifications.routes');
+app.use('/api', notificationRoutes);
 app.use("/api", require("./routes/analytics.routes"));
 
-// ----------------------------
-// MySQL keep-alive
-// ----------------------------
-if (db) {
-  setInterval(() => {
-    db.query("SELECT 1", err => {
-      if (err) {
-        log(`⚠️ MySQL keep-alive failed: ${err.message}`);
-      } else {
-        log("🫀 MySQL keep-alive OK");
-      }
-    });
-  }, 5 * 60 * 1000);
-}
-
-// ----------------------------
-// Start server
-// ----------------------------
-const PORT = process.env.PORT || 3000; 
-if (!PORT) {
-  log('❌ No PORT defined in environment! Cannot start server.');
-  process.exit(1);
-}
-
-try {
-  app.listen(PORT, () => {
-    log(`🚀 Server running on port ${PORT}`);
+// ========================
+// Start Server
+// ========================
+setInterval(() => {
+  db.query("SELECT 1", err => {
+    if (err) {
+      console.error("⚠️ MySQL keep-alive failed:", err.message);
+    } else {
+      console.log("🫀 MySQL keep-alive OK");
+    }
   });
-} catch (err) {
-  log(`❌ Server failed to start: ${err.message}`);
-}
+}, 5 * 60 * 1000);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+
+
