@@ -90,87 +90,103 @@ exports.createEntry = (req, res) => {
     return res.status(400).json({ error: "Amount must be greater than 0" });
   }
 
-  db.beginTransaction((err) => {
+  // Get connection from pool
+  db.getConnection((err, connection) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    // 1️⃣ Check user balance
-    db.query(
-      "SELECT total_balance FROM users WHERE id = ?",
-      [userId],
-      (err, userResult) => {
-        if (err)
-          return db.rollback(() =>
-            res.status(500).json({ error: err.message })
-          );
-
-        if (userResult.length === 0)
-          return db.rollback(() =>
-            res.status(404).json({ error: "User not found" })
-          );
-
-        const currentBalance = Number(userResult[0].total_balance || 0);
-
-        if (currentBalance < finalTotal)
-          return db.rollback(() =>
-            res.status(400).json({ error: "Insufficient balance" })
-          );
-
-        // 2️⃣ Deduct balance
-        db.query(
-          "UPDATE users SET total_balance = total_balance - ? WHERE id = ?",
-          [finalTotal, userId],
-          (err) => {
-            if (err)
-              return db.rollback(() =>
-                res.status(500).json({ error: err.message })
-              );
-
-            // 3️⃣ Insert entry
-            db.query(
-              `INSERT INTO entries 
-               (user_id, entry_number, amount, amount2, total_amount) 
-               VALUES (?,?,?,?,?)`,
-              [userId, entryNum, amt1, amt2, finalTotal],
-              (err, result) => {
-                if (err)
-                  return db.rollback(() =>
-                    res.status(500).json({ error: err.message })
-                  );
-
-                // 4️⃣ Insert transaction history (optional but recommended)
-                db.query(
-                  `INSERT INTO transactions (user_id, type, amount, description)
-                   VALUES (?, 'debit', ?, ?)`,
-                  [
-                    userId,
-                    finalTotal,
-                    `Entry #${entryNum} expense`,
-                  ],
-                  (err) => {
-                    if (err)
-                      return db.rollback(() =>
-                        res.status(500).json({ error: err.message })
-                      );
-
-                    db.commit((err) => {
-                      if (err)
-                        return db.rollback(() =>
-                          res.status(500).json({ error: err.message })
-                        );
-
-                      res.json({
-                        message: "Entry created & balance deducted",
-                        entry_id: result.insertId,
-                      });
-                    });
-                  }
-                );
-              }
-            );
-          }
-        );
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        return res.status(500).json({ error: err.message });
       }
-    );
+
+      // 1️⃣ Check user balance
+      connection.query(
+        "SELECT total_balance FROM users WHERE id = ?",
+        [userId],
+        (err, userResult) => {
+          if (err)
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: err.message });
+            });
+
+          if (userResult.length === 0)
+            return connection.rollback(() => {
+              connection.release();
+              res.status(404).json({ error: "User not found" });
+            });
+
+          const currentBalance = Number(userResult[0].total_balance || 0);
+
+          if (currentBalance < finalTotal)
+            return connection.rollback(() => {
+              connection.release();
+              res.status(400).json({ error: "Insufficient balance" });
+            });
+
+          // 2️⃣ Deduct balance
+          connection.query(
+            "UPDATE users SET total_balance = total_balance - ? WHERE id = ?",
+            [finalTotal, userId],
+            (err) => {
+              if (err)
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(500).json({ error: err.message });
+                });
+
+              // 3️⃣ Insert entry
+              connection.query(
+                `INSERT INTO entries 
+                 (user_id, entry_number, amount, amount2, total_amount) 
+                 VALUES (?,?,?,?,?)`,
+                [userId, entryNum, amt1, amt2, finalTotal],
+                (err, result) => {
+                  if (err)
+                    return connection.rollback(() => {
+                      connection.release();
+                      res.status(500).json({ error: err.message });
+                    });
+
+                  // 4️⃣ Insert transaction history
+                  connection.query(
+                    `INSERT INTO transactions (user_id, type, amount, description)
+                     VALUES (?, 'debit', ?, ?)`,
+                    [
+                      userId,
+                      finalTotal,
+                      `Entry #${entryNum} expense`,
+                    ],
+                    (err) => {
+                      if (err)
+                        return connection.rollback(() => {
+                          connection.release();
+                          res.status(500).json({ error: err.message });
+                        });
+
+                      connection.commit((err) => {
+                        if (err)
+                          return connection.rollback(() => {
+                            connection.release();
+                            res.status(500).json({ error: err.message });
+                          });
+
+                        connection.release();
+                        res.json({
+                          message: "Entry created & balance deducted",
+                          entry_id: result.insertId,
+                        });
+                      });
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    });
   });
 };
 

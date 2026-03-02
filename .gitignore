@@ -5,4 +5,7 @@ build/
 logs/
 *.log
 .DS_Store
-uploads/
+
+# Ignore all files in uploads except .gitkeep
+uploads/*
+!uploads/.gitkeep
